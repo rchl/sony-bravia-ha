@@ -17,11 +17,14 @@ from homeassistant.components.media_player import (
 from homeassistant.const import (
     ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_MAC, STATE_OFF, STATE_ON)
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.discovery import load_platform
 from homeassistant.util.json import load_json, save_json
 
 REQUIREMENTS = ['pySonyBraviaPSK==0.3.0']
 
 _LOGGER = logging.getLogger(__name__)
+
+SCRIPT_DOMAIN = 'braviatv'
 
 SUPPORT_BRAVIA = SUPPORT_PAUSE | SUPPORT_VOLUME_STEP | \
                  SUPPORT_VOLUME_MUTE | SUPPORT_VOLUME_SET | \
@@ -64,12 +67,19 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
         cv.ensure_list, [cv.string])})
 
 SERVICE_BRAVIA_COMMAND = 'bravia_command'
+SERVICE_BRAVIA_OPEN_APP = 'bravia_open_app'
 
 ATTR_COMMAND_ID = 'command_id'
+ATTR_URI = 'uri'
 
 BRAVIA_COMMAND_SCHEMA = vol.Schema({
     vol.Optional(ATTR_ENTITY_ID): cv.entity_id,
     vol.Required(ATTR_COMMAND_ID): cv.string,
+})
+
+BRAVIA_OPEN_APP_SCHEMA = vol.Schema({
+    vol.Optional(ATTR_ENTITY_ID): cv.entity_id,
+    vol.Required(ATTR_URI): cv.string,
 })
 
 # pylint: disable=unused-argument
@@ -205,6 +215,11 @@ def create_and_add_device(hass, add_devices, host, psk, mac, broadcast, name,
         lambda service:
             bravia_tv_device.send_command(service.data[ATTR_COMMAND_ID]),
         schema=BRAVIA_COMMAND_SCHEMA)
+    hass.services.register(
+        DOMAIN, SERVICE_BRAVIA_OPEN_APP,
+        lambda service:
+            bravia_tv_device.open_app(service.data[ATTR_URI]),
+        schema=BRAVIA_OPEN_APP_SCHEMA)
 
 
 class BraviaTVDevice(MediaPlayerDevice):
@@ -533,3 +548,7 @@ class BraviaTVDevice(MediaPlayerDevice):
     def send_command(self, command_id):
         """Sends named command to TV."""
         self._braviarc.send_command(command_id)
+
+    def open_app(self, uri):
+        """Opens app with given uri."""
+        self._braviarc.open_app(uri)
